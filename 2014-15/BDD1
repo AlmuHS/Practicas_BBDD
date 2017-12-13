@@ -1,0 +1,135 @@
+CREATE TABLE COMPANIA (
+	cif CHAR(9),
+	nombre CHAR(20),
+	web CHAR(30),
+	
+	CONSTRAINT cif_primaria PRIMARY KEY(cif)--Clave primaria
+)
+
+ALTER TABLE COMPANIA--Modificacion de la tabla COMPANIA (1)
+	ADD CONSTRAINT nom_unico UNIQUE(nombre, cif);
+	
+ALTER TABLE COMPANIA--Segunda modificacion tabla COMPANIA (2)
+	MODIFY nombre NOT NULL;
+
+CREATE TABLE TARIFAS (
+	tarifa CHAR(10),
+	companias CHAR(9),
+	descripcion CHAR(50),
+	coste NUMBER(3,2),--3 cifras enteras + dos cifras decimales
+	--Clave primaria compuesta por tarifa y compania
+	CONSTRAINT tar_primaria PRIMARY KEY(tarifa, companias),
+	--Clave ajena asociada a la clave primaria de la tabla COMPANIA
+	CONSTRAINT comp_ajena FOREIGN KEY(companias) REFERENCES COMPANIA(cif) 
+)
+
+ALTER TABLE TARIFAS--Modificacion en tabla TARIFAS
+	ADD CONSTRAINT limite_coste CHECK(coste > 0.05 AND coste > 1.50);
+
+ALTER TABLE TARIFAS--Modificacion segunda en tabla TARIFAS
+	MODIFY coste NOT NULL;
+
+ALTER TABLE TARIFAS--Modificacion 3 tabla TARIFAS
+	drop CONSTRAINT comp_ajena;
+
+ALTER TABLE TARIFAS--Modificacion 4 tabla TARIFAS
+	ADD CONSTRAINT comp_ajena FOREIGN KEY(companias) REFERENCES COMPANIA(cif)
+	ON DELETE CASCADE;
+
+
+CREATE TABLE CLIENTE (
+	dni CHAR(9),
+	nombre CHAR(50),
+	f_nac DATE,
+	direccion CHAR(100),
+	cp CHAR(6),--Codigo postal
+	ciudad CHAR(50),
+	provincia CHAR(50),
+
+	CONSTRAINT dni_primaria PRIMARY KEY(dni)
+)
+
+ALTER TABLE CLIENTE
+	MODIFY nombre NOT NULL;	
+
+CREATE TABLE TELEFONO (
+	numero CHAR(9),
+	f_contrato DATE,
+	tipo CHAR(1),
+	puntos NUMBER(6,0),
+	compania_tel CHAR(9),
+	tarifa_tel CHAR(10),
+	clientes CHAR(9),
+
+	CONSTRAINT num_primaria PRIMARY KEY(numero),--Clave primaria
+	--Clave ajena asociada a la clave primaria de la tabla TARIFA
+	CONSTRAINT tar_ajena FOREIGN KEY(tarifa_tel, compania_tel) REFERENCES TARIFAS(tarifa, companias),
+	CONSTRAINT comptel_ajena FOREIGN KEY(compania_tel) REFERENCES COMPANIA(cif),
+	CONSTRAINT cli_ajena FOREIGN KEY(clientes) REFERENCES CLIENTE(dni),
+	CHECK (tipo in('T', 'C'))
+)
+
+ALTER TABLE TELEFONO--Modificacion 1 tabla TELEFONO
+	MODIFY compania_tel NOT NULL;
+
+ALTER TABLE TELEFONO--Modificacion 2 tabla TELEFONO
+	MODIFY tarifa_tel NOT NULL;
+
+CREATE TABLE LLAMADA (
+	tf_origen CHAR(9),
+	tf_destino CHAR(9), 
+	fecha_hora TIMESTAMP,
+	duracion NUMBER(5,0),
+
+	CONSTRAINT llam_primaria PRIMARY KEY(tf_origen, fecha_hora),
+	CONSTRAINT origen_ajena FOREIGN KEY(tf_origen) REFERENCES TELEFONO,
+	CONSTRAINT destino_ajena FOREIGN KEY(tf_destino) REFERENCES TELEFONO,
+	CONSTRAINT no_repite UNIQUE(tf_destino, fecha_hora)--no puede haber dos llamadas simultaneas al mismo destino
+)
+
+ALTER TABLE LLAMADA--Modificacion tabla LLAMADA
+	MODIFY duracion NOT NULL;
+
+ALTER TABLE LLAMADA--Modificacion tabla LLAMADA 
+	ADD CONSTRAINT no_autollamada CHECK(tf_origen <> tf_destino);
+
+
+
+INSERT INTO COMPANIA(cif, nombre, web)
+	VALUES('A00000001', 'Kietostar', 'http://www.kietostar.com');
+
+INSERT INTO COMPANIA(cif, nombre, web)
+	VALUES('B00000002', 'Aotra', 'http://www.aotra.com'); 
+
+INSERT INTO TARIFAS(tarifa, companias, descripcion, coste)
+	VALUES('joven', 'A00000001', 'menores de 25 años', 0.25);
+
+INSERT INTO TARIFAS(tarifa, companias, descripcion, coste)
+	VALUES('duo', 'A00000001', ' la pareja también está en la compañía', 0.20);
+
+INSERT INTO TARIFAS(tarifa, companias, descripcion, coste)
+	VALUES('familiar', 'A00000001', '4 miembros de la familia en la compañía', 0.15);
+	
+INSERT INTO TARIFAS(tarifa, companias, descripcion, coste)
+	VALUES('autonomos', 'B00000002', ' trabajador autónomo', 0.12);
+
+INSERT INTO TARIFAS(tarifa, companias, descripcion, coste)
+	VALUES('duo', 'B00000002', 'la pareja también está en la compañía', 0.15);
+
+INSERT INTO COMPANIA --Restriccion cif unico violada
+	VALUES ('A00000001', 'Petafon', 'http://www.petafón.com'); 
+
+INSERT INTO COMPANIA 
+	VALUES ('C00000003', 'Aotra', 'http://www.aot.com');
+
+INSERT INTO TARIFAS --Restriccion tarifa unica violada
+	VALUES ('joven', 'D00000004', 'menores de 21 años', 0.20);
+
+INSERT INTO TARIFAS --Restriccion tarifa unica violada
+	VALUES ('duo', 'B00000002', 'la pareja también está en la compañía', 0.18);
+
+INSERT INTO TARIFAS --Restriccion limite de coste violada
+	VALUES ('amigos', 'B00000002', '10 amigos están también en la compañía', 1.60);
+
+DELETE FROM COMPANIA
+	WHERE cif='B00000002'

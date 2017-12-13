@@ -1,0 +1,126 @@
+1.
+
+	select nombre
+	from mf.compañia
+	where web like '%et%' and web like '%com';
+
+2.
+
+	select nombre, direccion, cp
+	from mf.cliente
+	where extract(YEAR from f_nac) in ('1973', '1985') and cp like '15%'
+	order by extract(YEAR from f_nac) asc, direccion desc;
+
+3.
+
+	select tf_destino
+	from mf.llamada
+	where tf_origen='666010101' and extract(YEAR from fecha_hora)='2006';
+
+4. 
+
+	select tf_origen
+	from mf.llamada
+	where tf_destino='666010101' and extract(HOUR from fecha_hora) between 10 and 12;
+
+5. Mostrar el código y coste de las tarifas junto con el nombre de la compañía que las ofrecen, de
+aquellas tarifas cuya descripción indique que otras personas deben estar también en la misma compañía
+
+	select tarifa, nombre, coste
+	from mf.Tarifa T INNER JOIN mf.compañia C on T.compañia=C.cif
+	where T.descripcion like '%en la compañía';
+
+6. Nombre y número de teléfonos de aquellos abonados con contrato que tienen tarifas inferiores a 0,20 €
+
+	select nombre, numero
+	from mf.Cliente Cl INNER JOIN mf.Telefono Tlf on Cl.dni=Tlf.cliente
+		INNER JOIN mf.Tarifa T on Tlf.tarifa=T.tarifa and Tlf.compañia=T.compañia
+	where Tlf.tipo='C' and T.coste < 0.2
+
+
+10. Obtener la fecha (día-mes-año) en la que se realizó la llamada de mayor duración
+
+	select fecha_hora
+	from mf.Llamada L
+	where L.duracion >= ALL (SELECT duracion from mf.Llamada Ll)
+
+
+11. Obtener el nombre de los abonados de la compañía ‘Aotra’ con el mismo tipo de tarifa que la del telefono “654123321”
+
+	select nombre
+	from mf.cliente Cl
+	where Cl.dni=
+		(select cliente
+		from mf.Telefono Tlf INNER JOIN mf.Compañia C on Tlf.compañia=C.cif
+		where C.nombre='Aotra' and Tlf.Tarifa = (Select tarifa from mf.Telefono T
+								where T.numero= '654123321'))
+
+
+12. Mostrar, utilizando para ello una subconsulta, el número de teléfono, fecha de contrato y tipo
+de los abonados que no han hecho ninguna llamada a teléfonos de clientes de la provincia de La Coruña durante el mes de octubre de 2006
+
+	select numero, f_contrato, tipo
+	from mf.Telefono Tlf INNER JOIN mf.Llamada L on Tlf.numero=L.tf_origen
+	where Tlf.destino NOT IN (select numero from mf.Telefono T INNER JOIN mf.cliente Cl 
+				where Cl.dni=T.cliente and Cl.provincia='La Coruña') and Tlf.fecha_hora<>10/06 
+
+
+
+17. Utilizando consultas correlacionadas, mostrar el nombre de los abonados que han llamado el día ‘16/10/06’
+
+select nombre
+from mf.Cliente Cl INNER JOIN mf.Telefono Tlf on Cl.dni=Tlf.cliente
+where Tlf.numero IN (select tf_origen
+		from mf.Llamada Ll
+		where to_char(fecha_hora, 'dd/mm/yy')= '16/10/06')
+
+
+
+18. Utilizando consultas correlacionadas, obtener el nombre de los abonados que han realizado llamadas de menos de 1 minuto y medio
+
+select nombre
+from mf.Cliente Cl INNER JOIN mf.Telefono Tlf on Cl.dni=Tlf.cliente
+where Tlf.numero IN (select tf_origen
+		from mf.Llamada Ll
+		where duracion < 90)
+
+
+19. Utilizando consultas correlacionadas, obtener el nombre de los abonados de la compañía ‘KietoStar’ que no hicieron ninguna llamada el mes de septiembre
+
+select nombre
+from mf.Cliente Cl INNER JOIN mf.Telefono Tlf on Cl.dni=TLF.cliente
+where Tlf.Compañia = (Select cif
+			from mf.Compañia
+			where nombre='Kietostar')
+		and Tlf.numero NOT IN (select tf_origen
+					from mf.Llamada Ll
+					where extract(month from fecha_hora)=09)
+
+
+
+20. Utilizando consultas correlacionadas, mostrar todos los datos de los telefonos que hayan llamado al número 654234234 pero no al 666789789 
+
+select *
+from mf.Telefono Tlf
+where Tlf.numero IN (select tf_origen
+		from mf.Llamada Ll
+		where Ll.tf_destino=654234234 and Ll.tf_destino<>666789789)
+
+
+22. Mostrar la compañía con la que se realizaron más llamadas durante el día 16/10/06
+
+select nombre
+from mf.Compañia C INNER JOIN mf.Telefono Tlf on C.cif=Tlf.compañia
+	INNER JOIN mf.Llamada L on Tlf.numero=L.tf_origen
+where to_char(fecha_hora, 'dd/mm/yy')= '16/10/06'
+group by C.nombre
+having count(*)=max()
+
+24. Mostrar el nombre de cada cliente junto con coste total de las llamadas que realiza con cada compañia.
+El resultado debe mostrarse ordenado descendentemente por cliente y ascendentemente por compañia
+
+select nombre, coste
+from mf.cliente Cl INNER JOIN mf.Telefono Tlf on Cl.dni=Tlf.cliente
+		INNER JOIN mf.Llamada Ll on Ll.tf_origen=Tlf.numero
+where coste=SUM(select tf_origen
+
